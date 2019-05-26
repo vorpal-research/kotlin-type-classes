@@ -3,6 +3,7 @@ package ru.spbstu.kotlin.typeclass
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.reflect.KType
+import kotlin.reflect.full.starProjectedType
 import kotlin.reflect.full.withNullability
 import kotlin.reflect.jvm.reflect
 
@@ -108,23 +109,37 @@ object TypeClasses {
     @PublishedApi
     internal val cache = mutableMapOf<KClass<*>, MutableMap<Type, Any?>>()
 
-    inline fun <reified TC : TCKind<TC, *>> get(type: Type): TC =
-            cache.getOrPut(TC::class, { mutableMapOf() }).getOrPut(type) {
+    // TODO: think
+    val starReplacement = Any::class.starProjectedType.withNullability(true)
+
+    fun <TC : TCKind<TC, *>> get(tcKlass: KClass<TC>, type: Type): TC =
+            cache.getOrPut(tcKlass, { mutableMapOf() }).getOrPut(type) {
                 when {
                     type.isMarkedNullable ->
-                        get(TC::class)[Nullable::class]
+                        get(tcKlass)[Nullable::class]
                                 ?.invoke(listOf(type.withNullability(false)), type.annotations)
                     else ->
-                        get(TC::class)[type.classifier as KClass<*>]
-                                ?.invoke(type.arguments.map { it.type!! }, type.annotations)
+                        get(tcKlass)[type.classifier as KClass<*>]
+                                ?.invoke(type.arguments.map { it.type ?: starReplacement }, type.annotations)
                 }
-            } as? TC ?: throw IllegalArgumentException("No ${TC::class.qualifiedName} instance found for type $type")
+            } as? TC ?: throw IllegalArgumentException("No ${tcKlass.qualifiedName} instance found for type $type")
 
-    fun deduceElementType(tcType: Type) = tcType.arguments.last().type!!
+    inline fun <reified TC : TCKind<TC, *>> get(type: Type): TC =
+            get(TC::class, type)
+
+    fun deduceElementType(tcType: Type) =
+            tcType.supertypes.first { it.classifier == TCKind::class }.arguments[1].type!!
 
     inline operator fun <reified TC : TCKind<C, E>, reified C : TCKind<C, *>, E> getValue(thisRef: Any?, prop: KProperty<*>) =
             get<C>(deduceElementType(prop.returnType)) as TC
 
     inline fun <reified TC : TCKind<C, E>, reified C : TCKind<C, *>, E, R> provide(noinline body: (TC) -> R) =
             body(get<C>(deduceElementType(body.reflect()!!.parameters.first().type)) as TC)
+
+
+    @JvmName("getByClass")
+    operator fun <TC: TCKind<TC, *>> KClass<TC>.get(type: Type) = get(this, type)
+
+    infix fun <TC: TCKind<TC, *>> KClass<TC>.of(type: Type) = get(this, type)
+
 }

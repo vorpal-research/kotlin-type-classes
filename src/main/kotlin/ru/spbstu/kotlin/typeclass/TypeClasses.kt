@@ -96,6 +96,15 @@ object TypeClasses {
     inline fun <reified TC : TCKind<TC, *>, reified T> instance(crossinline body: () -> TCKind<TC, T>) =
             instance { _, _ -> body() }
 
+    inline fun <TC : TCKind<TC, *>, T: Any> rawInstance(
+            tcClass: KClass<TC>,
+            tClass: KClass<T>,
+            crossinline body: (genericArguments: List<Type>, annotations: List<Annotation>) -> TCKind<TC, T>
+    ) {
+        val bd = TClassProvider(body)
+        @Suppress("UNCHECKED_CAST")
+        this[tcClass].setUnsafe(tClass as KClass<*>, bd)
+    }
 
     @JvmName("setNullable")
     inline fun <reified TC : TCKind<TC, *>> instance(provider: TClassProvider<TC, Any?>) {
@@ -107,13 +116,13 @@ object TypeClasses {
 
     // TODO: make this a proper cache
     @PublishedApi
-    internal val cache = mutableMapOf<KClass<*>, MutableMap<Type, Any?>>()
+    internal val cache = mutableMapOf<KClass<*>, MutableMap<Pair<Type, List<Annotation>>, Any?>>()
 
     // TODO: think
     val starReplacement = Any::class.starProjectedType.withNullability(true)
 
     fun <TC : TCKind<TC, *>> get(tcKlass: KClass<TC>, type: Type): TC =
-            cache.getOrPut(tcKlass, { mutableMapOf() }).getOrPut(type) {
+            cache.getOrPut(tcKlass, { mutableMapOf() }).getOrPut(type to type.annotations) {
                 when {
                     type.isMarkedNullable ->
                         get(tcKlass)[Nullable::class]

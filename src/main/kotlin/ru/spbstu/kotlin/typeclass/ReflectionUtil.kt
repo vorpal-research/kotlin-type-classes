@@ -3,6 +3,10 @@ package ru.spbstu.kotlin.typeclass
 import kotlin.reflect.*
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.defaultType
+import kotlin.reflect.full.starProjectedType
+import kotlin.reflect.jvm.reflect
+
+inline fun <reified T> typeOf(noinline body: () -> T) = body.reflect()!!.returnType
 
 fun KType.copy(classifier: KClassifier? = this.classifier,
                arguments: List<KTypeProjection> = this.arguments,
@@ -36,5 +40,7 @@ object TypeBuilder {
 
     operator fun <T: Any> KClass<T>.invoke(vararg arguments: KTypeProjection) =
             createType(arguments.asList())
+
+    operator fun <T: Any> KClass<T>.invoke() = starProjectedType
 
 }

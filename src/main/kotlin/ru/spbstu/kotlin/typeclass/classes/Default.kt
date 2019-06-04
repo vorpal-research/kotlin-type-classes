@@ -2,7 +2,6 @@ package ru.spbstu.kotlin.typeclass.classes
 
 import ru.spbstu.kotlin.typeclass.TCKind
 import ru.spbstu.kotlin.typeclass.TypeClasses
-import ru.spbstu.kotlin.typeclass.TypeClasses.instance
 
 interface Default<out T> : TCKind<Default<*>, @kotlin.UnsafeVariance T> {
     companion object
@@ -29,23 +28,6 @@ fun Default.Companion.exportDefaults() {
         val df = Default::class
 
         instance { (a, b) -> Default(df[a].default to df[b].default) }
-        instance { (a, b, c) -> Default(
-                Triple(df[a].default, df[b].default, df[c].default)
-        ) }
+        instance { (a, b, c) -> Default(Triple(df[a].default, df[b].default, df[c].default)) }
     }
-}
-
-fun main() {
-
-
-
-
-    val ddd: Default<List<Map<Int, Int>>> by TypeClasses
-
-    println(ddd.default)
-
-    val tr: Default<Triple<String, Int, Pair<Double, Double?>>> by TypeClasses
-
-    println(tr.default)
-
 }

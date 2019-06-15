@@ -63,6 +63,32 @@ internal class TCRegistry<C : TCKind<C, *>> : TCKind<TCRegistry<*>, C> {
 internal inline val <TC : TCKind<TCRegistry<*>, T>, T : TCKind<T, *>> TC.instance: TCRegistry<T>
     get() = this as TCRegistry<T>
 
+// only used for caching
+internal class TypeWrapper(type: Type): Type {
+    override val classifier = type.classifier
+    override val annotations = type.annotations
+    override val isMarkedNullable = type.isMarkedNullable
+    override val arguments = type.arguments.map { it.copy(type = it.type?.let(::TypeWrapper)) }
+
+    override fun hashCode(): Int {
+        var result = classifier.hashCode()
+        result = 31 * result + annotations.hashCode()
+        result = 31 * result + isMarkedNullable.hashCode()
+        result = 31 * result + arguments.hashCode()
+        return result
+    }
+
+    override fun equals(other: Any?): Boolean = when {
+        this === other -> true
+        other !is TypeWrapper -> false
+        classifier != other.classifier -> false
+        annotations != other.annotations -> false
+        isMarkedNullable != other.isMarkedNullable -> false
+        arguments != other.arguments -> false
+        else -> true
+    }
+}
+
 object TypeClasses {
     private val data = ClassMap<TCRegistry<*>>()
 
@@ -96,6 +122,15 @@ object TypeClasses {
     inline fun <reified TC : TCKind<TC, *>, reified T> instance(crossinline body: () -> TCKind<TC, T>) =
             instance { _, _ -> body() }
 
+    inline fun <TC : TCKind<TC, *>, T: Any> rawInstance(
+            tcClass: KClass<TC>,
+            tClass: KClass<T>,
+            crossinline body: (genericArguments: List<Type>, annotations: List<Annotation>) -> TCKind<TC, T>
+    ) {
+        val bd = TClassProvider(body)
+        @Suppress("UNCHECKED_CAST")
+        this[tcClass].setUnsafe(tClass as KClass<*>, bd)
+    }
 
     @JvmName("setNullable")
     inline fun <reified TC : TCKind<TC, *>> instance(provider: TClassProvider<TC, Any?>) {
@@ -107,13 +142,13 @@ object TypeClasses {
 
     // TODO: make this a proper cache
     @PublishedApi
-    internal val cache = mutableMapOf<KClass<*>, MutableMap<Type, Any?>>()
+    internal val cache = mutableMapOf<KClass<*>, MutableMap<TypeWrapper, Any?>>()
 
     // TODO: think
     val starReplacement = Any::class.starProjectedType.withNullability(true)
 
     fun <TC : TCKind<TC, *>> get(tcKlass: KClass<TC>, type: Type): TC =
-            cache.getOrPut(tcKlass, { mutableMapOf() }).getOrPut(type) {
+            cache.getOrPut(tcKlass, { mutableMapOf() }).getOrPut(TypeWrapper(type)) {
                 when {
                     type.isMarkedNullable ->
                         get(tcKlass)[Nullable::class]

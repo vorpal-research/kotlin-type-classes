@@ -2,9 +2,13 @@ package ru.spbstu.kotlin.typeclass
 
 import ru.spbstu.kotlin.typeclass.classes.Default
 import ru.spbstu.kotlin.typeclass.classes.exportDefaults
+import kotlin.reflect.jvm.reflect
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+
+@Target(AnnotationTarget.TYPE)
+annotation class Fee(vararg val i: Int)
 
 class DefaultTest {
 
@@ -26,6 +30,12 @@ class DefaultTest {
             assertEquals(d.default, Triple("", 0, Pair(0.0, null)))
         }
 
+    }
+
+    @Test
+    fun sanityCheck() {
+        println(typeOf { listOf(1) } == typeOf { mutableListOf(1) })
+        println(typeOf { listOf(1) } == typeOf { mutableListOf(1) })
     }
 
 }

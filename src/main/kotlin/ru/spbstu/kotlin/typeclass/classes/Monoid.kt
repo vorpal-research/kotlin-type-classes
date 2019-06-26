@@ -4,6 +4,25 @@ import ru.spbstu.kotlin.typeclass.TCKind
 import ru.spbstu.kotlin.typeclass.TypeClasses
 
 interface Monoid<T> : TCKind<Monoid<*>, @kotlin.UnsafeVariance T> {
+    companion object {
+        inline fun <reified T> getInstance(): Monoid<T> = TypeClasses.implicitly()
+
+        inline fun <reified T> getEmpty(): T = getInstance<T>().empty
+
+        inline operator fun <reified T> T.plus(rhv: T): T = let { lhv ->
+            with(getInstance<T>()) { lhv + rhv }
+        }
+
+        inline fun <reified T> concat(vararg values: T) = with(getInstance<T>()) {
+            var res = empty
+            for(v in values) {
+                res += v
+            }
+            res
+        }
+
+    }
+
     val empty: T
     operator fun T.plus(that: T): T
 }
@@ -43,8 +62,9 @@ fun defaultMonoids() {
         }
 
     }
-
 }
+
+
 
 fun main() {
     defaultMonoids()
@@ -53,5 +73,9 @@ fun main() {
         monoid.run {
             println((0 to "Hello") + (2 to "World"))
         }
+    }
+
+    with(Monoid) {
+        println((0 to "Hello") + (2 to "World"))
     }
 }

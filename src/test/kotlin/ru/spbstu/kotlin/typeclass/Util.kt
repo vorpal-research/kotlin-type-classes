@@ -1,8 +1,11 @@
 package ru.spbstu.kotlin.typeclass
 
-private val executed: MutableSet<() -> Unit> = mutableSetOf()
+import kotlin.reflect.KClass
+
+private val executed: MutableSet<KClass<out () -> Unit>> = mutableSetOf()
 
 fun once(body: () -> Unit) {
-    if (body !in executed) body()
-    executed += body
+    if (body::class !in executed) body()
+    executed += (body::class)
 }
+

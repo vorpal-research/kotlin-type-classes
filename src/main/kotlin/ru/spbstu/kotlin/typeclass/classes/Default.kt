@@ -4,7 +4,9 @@ import ru.spbstu.kotlin.typeclass.TCKind
 import ru.spbstu.kotlin.typeclass.TypeClasses
 
 interface Default<out T> : TCKind<Default<*>, @kotlin.UnsafeVariance T> {
-    companion object
+    companion object {
+        inline fun <reified T> getInstance(): Default<T> = TypeClasses.implicitly()
+    }
     val default: T
 }
 
@@ -31,3 +33,5 @@ fun Default.Companion.exportDefaults() {
         instance { (a, b, c) -> Default(Triple(df[a].default, df[b].default, df[c].default)) }
     }
 }
+
+inline fun <reified T> defaultValue(): T = Default.getInstance<T>().default

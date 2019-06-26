@@ -165,6 +165,9 @@ object TypeClasses {
     fun deduceElementType(tcType: Type) =
             tcType.supertypes.first { it.classifier == TCKind::class }.arguments[1].type!!
 
+    inline fun <reified TC : TCKind<C, E>, reified C : TCKind<C, *>, reified E> implicitly(): TC =
+            get<C>(typeOf<E>()) as TC
+
     inline operator fun <reified TC : TCKind<C, E>, reified C : TCKind<C, *>, E> getValue(thisRef: Any?, prop: KProperty<*>) =
             get<C>(deduceElementType(prop.returnType)) as TC
 
